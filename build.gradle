@@ -50,6 +50,25 @@ subprojects { project ->
             }
         }
 
+        tasks.withType(KotlinCompile).configureEach {
+            kotlinOptions {
+                if (project.findProperty("composeCompilerReports") == "true") {
+                    freeCompilerArgs += [
+                            "-P",
+                            "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=" +
+                                    project.buildDir.absolutePath + "/compose_compiler"
+                    ]
+                }
+                if (project.findProperty("composeCompilerMetrics") == "true") {
+                    freeCompilerArgs += [
+                            "-P",
+                            "plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination=" +
+                                    project.buildDir.absolutePath + "/compose_compiler"
+                    ]
+                }
+            }
+        }
+
         if (project.hasProperty("android")) {
             android {
                 compileSdkVersion  33

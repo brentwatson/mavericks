@@ -21,6 +21,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.airbnb.mvrx.MavericksState
 import com.airbnb.mvrx.MavericksViewModel
+import com.airbnb.mvrx.MavericksViewModelFactory
+import com.airbnb.mvrx.ViewModelContext
 import com.airbnb.mvrx.compose.collectAsState
 import com.airbnb.mvrx.compose.mavericksActivityViewModel
 import com.airbnb.mvrx.compose.mavericksViewModel
@@ -54,8 +56,39 @@ data class ArgumentsTest(val count: Int) : Parcelable {
     }
 }
 
-class CounterViewModel(initialState: CounterState) : MavericksViewModel<CounterState>(initialState) {
-    fun incrementCount() = setState { copy(count = count + 1) }
+
+class CounterViewModel(
+    initialState: CounterState,
+    private val complexProperty: ComplexProperty
+) : MavericksViewModel<CounterState>(initialState) {
+    companion object : MavericksViewModelFactory<CounterViewModel, CounterState> {
+        override fun create(viewModelContext: ViewModelContext, state: CounterState): CounterViewModel =
+            CounterViewModel(state, ComplexPropertyImpl(DelegateImpl()))
+    }
+
+    fun incrementCount() {
+        complexProperty.trackCount()
+        setState { copy(count = count + 1) }
+    }
+}
+
+interface ComplexProperty {
+    fun trackCount()
+}
+
+class ComplexPropertyImpl(delegate: Delegate) : ComplexProperty, Delegate by delegate {
+    override fun trackCount() = countChanged()
+}
+
+interface Delegate {
+    fun countChanged()
+}
+
+class DelegateImpl : Delegate {
+    private var count = 0
+    override fun countChanged() {
+        count++
+    }
 }
 
 class ComposeSampleActivity : AppCompatActivity() {
@@ -87,11 +120,14 @@ class ComposeSampleActivity : AppCompatActivity() {
     }
 
     @Composable
-    fun CounterScreen(title: String, useInitialArgument: Boolean) {
+    fun CounterScreen(
+        title: String,
+        useInitialArgument: Boolean,
         // This will get or create a ViewModel scoped to the closest LocalLifecycleOwner which, in this case, is the NavHost.
-        val navScopedViewModel: CounterViewModel = mavericksViewModel(argsFactory = { ArgumentsTest(5) }.takeIf { useInitialArgument })
+        navScopedViewModel: CounterViewModel = mavericksViewModel(argsFactory = { ArgumentsTest(5) }.takeIf { useInitialArgument }),
         // This will get or create a ViewModel scoped to the Activity.
-        val activityScopedViewModel: CounterViewModel = mavericksActivityViewModel()
+        activityScopedViewModel: CounterViewModel = mavericksActivityViewModel(),
+    ) {
 
         val navScopedCount by navScopedViewModel.collectAsState(CounterState::count)
         val activityScopedCount by activityScopedViewModel.collectAsState(CounterState::count)
